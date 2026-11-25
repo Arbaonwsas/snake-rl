@@ -204,8 +204,8 @@ def run_interactive(
     snake_cfg = SnakeConfig(
         grid_width=grid_size,
         grid_height=grid_size,
-        starvation_factor=15,
-        min_starvation_steps=500,
+        starvation_factor=8,
+        min_starvation_steps=300,
     )
     render_cfg = RenderConfig(cell_size=cell_size)
     env = SnakeEnv(

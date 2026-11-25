@@ -84,8 +84,8 @@ def evaluate_ppo_agent(
     scfg = SnakeConfig(
         grid_width=g,
         grid_height=g,
-        starvation_factor=15,
-        min_starvation_steps=500,
+        starvation_factor=8,
+        min_starvation_steps=300,
         enable_flood_fill=False,
     )
     env = SnakeEnv(grid_size=g, obs_mode="grid", action_mode="relative", snake_config=scfg)
