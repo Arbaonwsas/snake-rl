@@ -361,32 +361,12 @@ class SnakeCore:
 
         return inv_dists, endpoints
 
-    def _flood_fill_count(self, start: tuple[int, int], max_target: int) -> int:
-        """从候选格出发计算连通可用格数（带上限剪枝以保证微秒级耗时）。"""
-        sx, sy = start
-        if self.is_collision(start, ignore_tail=True):
-            return 0
-
-        visited = np.zeros((self.height, self.width), dtype=np.bool_)
-        visited[sy, sx] = True
-        tail_pos = self.tail
-
-        queue: deque[tuple[int, int]] = deque([start])
-        count = 0
-        while queue and count < max_target:
-            cx, cy = queue.popleft()
-            count += 1
-            for dx, dy in DIRECTION_DELTAS:
-                nx, ny = cx + dx, cy + dy
-                if 0 <= nx < self.width and 0 <= ny < self.height and not visited[ny, nx]:
-                    cell = self.board[ny, nx]
-                    if cell in (CELL_EMPTY, CELL_FOOD) or (nx, ny) == tail_pos:
-                        visited[ny, nx] = True
-                        queue.append((nx, ny))
-        return count
-
     def compute_reachable_ratios(self) -> np.ndarray:
-        """计算直行、左转、右转三个方向的连通可达空间比例，值域 [0.0, 1.0]。"""
+        """计算直行、左转、右转三个方向的连通可达空间比例，值域 [0.0, 1.0]。
+
+        利用无向图连通分量等价性进行加速：若多个候选格处于同一连通空地分量内，
+        一次一维 BFS 遍历即可同时得出所有同分量候选格的精确可达面积。
+        """
         candidates = self.get_relative_candidates()
         if not self.config.enable_flood_fill:
             return np.array(
@@ -394,12 +374,74 @@ class SnakeCore:
                 dtype=np.float32,
             )
 
-        # 当前棋盘可用总格数（含食物格及即将移动腾出的旧蛇尾 1 格）
-        free_total = max(1, self.config.total_cells - len(self.snake) + 1)
+        w, h = self.width, self.height
+        total = w * h
+        free_total = max(1, total - len(self.snake) + 1)
+        tail_x, tail_y = self.tail
+        tail_idx = tail_y * w + tail_x
+
+        # 构建一维可通行布尔表（空地、食物、即将移开的旧蛇尾均可通行）
+        flat_board = self.board.ravel()
+        passable = (flat_board == CELL_EMPTY) | (flat_board == CELL_FOOD)
+        passable[tail_idx] = True
+        pass_list = passable.tolist()
+
+        comp_id = [0] * total
+        comp_sizes: dict[int, int] = {}
+        next_cid = 0
         ratios = np.zeros(3, dtype=np.float32)
-        for idx, pos in enumerate(candidates):
-            cnt = self._flood_fill_count(pos, max_target=free_total)
-            ratios[idx] = min(1.0, float(cnt) / float(free_total))
+
+        for act_idx, (sx, sy) in enumerate(candidates):
+            if sx < 0 or sx >= w or sy < 0 or sy >= h:
+                continue
+            s_flat = sy * w + sx
+            if not pass_list[s_flat]:
+                continue
+
+            existing_cid = comp_id[s_flat]
+            if existing_cid != 0:
+                cnt = comp_sizes[existing_cid]
+                ratios[act_idx] = min(1.0, cnt / free_total)
+                continue
+
+            next_cid += 1
+            cid = next_cid
+            comp_id[s_flat] = cid
+            queue = [s_flat]
+            q_head = 0
+            while q_head < len(queue):
+                curr = queue[q_head]
+                q_head += 1
+                cx = curr % w
+                # 上
+                if curr >= w:
+                    nb = curr - w
+                    if pass_list[nb] and comp_id[nb] == 0:
+                        comp_id[nb] = cid
+                        queue.append(nb)
+                # 下
+                if curr + w < total:
+                    nb = curr + w
+                    if pass_list[nb] and comp_id[nb] == 0:
+                        comp_id[nb] = cid
+                        queue.append(nb)
+                # 左
+                if cx > 0:
+                    nb = curr - 1
+                    if pass_list[nb] and comp_id[nb] == 0:
+                        comp_id[nb] = cid
+                        queue.append(nb)
+                # 右
+                if cx + 1 < w:
+                    nb = curr + 1
+                    if pass_list[nb] and comp_id[nb] == 0:
+                        comp_id[nb] = cid
+                        queue.append(nb)
+
+            cnt = len(queue)
+            comp_sizes[cid] = cnt
+            ratios[act_idx] = min(1.0, cnt / free_total)
+
         return ratios
 
     def heuristic_action(self) -> int:

@@ -373,23 +373,38 @@ class SnakeRenderer:
             pygame.draw.rect(self.surface, bar_col, fg_bar, border_radius=5)
         y += 22
 
-        # 4. 三向动作连通空间安全性透视条
+        # 4. 三向动作连通空间安全性透视条（若激活 DQN 模式则同步展示预测 Q 值）
+        sec_hdr = (
+            "动作空间透视 (Flood-Fill & Q值)"
+            if env.last_q_values is not None
+            else "相对动作可达空间 (Flood-Fill)"
+        )
         self.surface.blit(
-            self.font_label.render("相对动作可达空间 (Flood-Fill)", True, self.rc.text_primary),
+            self.font_label.render(sec_hdr, True, self.rc.text_primary),
             (x0, y),
         )
         y += 22
         candidates = env.core.get_relative_candidates()
         ratios = env.last_reachable_ratios
-        act_names = ["[0] 直行 Straight", "[1] 左转 Turn L  ", "[2] 右转 Turn R  "]
-        for idx, name in enumerate(act_names):
+        q_vals = env.last_q_values
+        best_q_idx = int(np.argmax(q_vals)) if q_vals is not None else -1
+        act_names = ["[0] 直行", "[1] 左转", "[2] 右转"]
+        for idx, short_name in enumerate(act_names):
             danger = env.core.is_collision(candidates[idx], ignore_tail=True)
             r_val = 0.0 if danger else float(ratios[idx])
             c = self.rc.accent_red if danger else (self.rc.accent_yellow if r_val < 0.35 else self.rc.accent_green)
 
-            self.surface.blit(self.font_small.render(name, True, self.rc.text_secondary), (x0, y))
-            bar_x = x0 + 118
-            bar_w = cw - 166
+            if q_vals is not None:
+                prefix = "★" if idx == best_q_idx else " "
+                lbl_str = f"{prefix}{short_name} Q:{q_vals[idx]:+5.1f}"
+                lbl_col = self.rc.accent_blue if idx == best_q_idx else self.rc.text_secondary
+            else:
+                lbl_str = f"{short_name} Straight" if idx == 0 else (f"{short_name} Turn L  " if idx == 1 else f"{short_name} Turn R  ")
+                lbl_col = self.rc.text_secondary
+
+            self.surface.blit(self.font_small.render(lbl_str, True, lbl_col), (x0, y))
+            bar_x = x0 + 126
+            bar_w = cw - 174
             pygame.draw.rect(self.surface, self.rc.card_bg, pygame.Rect(bar_x, y + 3, bar_w, 10), border_radius=4)
             if r_val > 0:
                 pygame.draw.rect(
@@ -439,7 +454,7 @@ class SnakeRenderer:
 
         help_lines = [
             "方向键 / WASD : 人工控制移动",
-            "Tab / M       : 切换 [人工试玩 / 启发式AI]",
+            "Tab / M       : 切换 [人工 / DQN / 启发式AI]",
             "Space / N     : 暂停继续 / 暂停时单步调试",
             "V             : 开关 RL 激光雷达与连通度透视",
             "[ / ] (或 -/+) : 实时调节运行速度 FPS",

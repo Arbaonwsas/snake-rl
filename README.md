@@ -23,14 +23,24 @@
 
 ## 2. 快速运行
 
-### 启动可视化窗口（人工试玩 & AI 实时切换）
+### 启动可视化窗口（支持 DQN 模型 / 启发式 AI / 人工试玩无缝切换）
 ```bash
 cd /home/qzy/snake-rl
+
+# 1. 直接观看已训练好的 Dueling Double DQN 智能体实战（实时展示三向 Q 值预测）
+.venv/bin/python scripts/play.py --mode dqn
+
+# 2. 启动人工键盘试玩模式（随时按 Tab 键在 [人工 -> DQN AI -> 启发式 AI] 之间循环切换！）
 .venv/bin/python scripts/play.py
 ```
-或者直接以**启发式智能体演示模式**启动：
+
+### 重新训练 Dueling Double DQN 或启动 TensorBoard
 ```bash
-.venv/bin/python scripts/play.py --mode heuristic
+# 16 环境并行 + RTX 4060 GPU 训练 400,000 步（约 4.5 分钟）
+.venv/bin/python scripts/train_dqn.py --total-steps 400000 --num-envs 16
+
+# 启动 TensorBoard 查看训练实时日志
+.venv/bin/tensorboard --logdir runs
 ```
 
 ### 窗口内交互快捷键
