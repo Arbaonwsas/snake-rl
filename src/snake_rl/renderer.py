@@ -373,12 +373,15 @@ class SnakeRenderer:
             pygame.draw.rect(self.surface, bar_col, fg_bar, border_radius=5)
         y += 22
 
-        # 4. 三向动作连通空间安全性透视条（若激活 DQN 模式则同步展示预测 Q 值）
-        sec_hdr = (
-            "动作空间透视 (Flood-Fill & Q值)"
-            if env.last_q_values is not None
-            else "相对动作可达空间 (Flood-Fill)"
-        )
+        # 4. 三向动作连通空间安全性透视条（自动适配 PPO 策略概率 / DQN Q 值 / 纯 Flood-Fill）
+        if env.last_action_probs is not None:
+            v_txt = f"  V(s):{env.last_state_value:+.1f}" if env.last_state_value is not None else ""
+            sec_hdr = f"策略概率与空间透视{v_txt}"
+        elif env.last_q_values is not None:
+            sec_hdr = "动作空间透视 (Flood-Fill & Q值)"
+        else:
+            sec_hdr = "相对动作可达空间 (Flood-Fill)"
+
         self.surface.blit(
             self.font_label.render(sec_hdr, True, self.rc.text_primary),
             (x0, y),
@@ -386,7 +389,9 @@ class SnakeRenderer:
         y += 22
         candidates = env.core.get_relative_candidates()
         ratios = env.last_reachable_ratios
+        probs = env.last_action_probs
         q_vals = env.last_q_values
+        best_p_idx = int(np.argmax(probs)) if probs is not None else -1
         best_q_idx = int(np.argmax(q_vals)) if q_vals is not None else -1
         act_names = ["[0] 直行", "[1] 左转", "[2] 右转"]
         for idx, short_name in enumerate(act_names):
@@ -394,7 +399,11 @@ class SnakeRenderer:
             r_val = 0.0 if danger else float(ratios[idx])
             c = self.rc.accent_red if danger else (self.rc.accent_yellow if r_val < 0.35 else self.rc.accent_green)
 
-            if q_vals is not None:
+            if probs is not None:
+                prefix = "★" if idx == best_p_idx else " "
+                lbl_str = f"{prefix}{short_name} P:{probs[idx] * 100:4.0f}%"
+                lbl_col = self.rc.accent_green if idx == best_p_idx else self.rc.text_secondary
+            elif q_vals is not None:
                 prefix = "★" if idx == best_q_idx else " "
                 lbl_str = f"{prefix}{short_name} Q:{q_vals[idx]:+5.1f}"
                 lbl_col = self.rc.accent_blue if idx == best_q_idx else self.rc.text_secondary
@@ -454,7 +463,7 @@ class SnakeRenderer:
 
         help_lines = [
             "方向键 / WASD : 人工控制移动",
-            "Tab / M       : 切换 [人工 / DQN / 启发式AI]",
+            "Tab / M       : 切换 [人工 / PPO / DQN / 启发式]",
             "Space / N     : 暂停继续 / 暂停时单步调试",
             "V             : 开关 RL 激光雷达与连通度透视",
             "[ / ] (或 -/+) : 实时调节运行速度 FPS",

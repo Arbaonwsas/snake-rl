@@ -23,23 +23,30 @@
 
 ## 2. 快速运行
 
-### 启动可视化窗口（支持 DQN 模型 / 启发式 AI / 人工试玩无缝切换）
+### 启动可视化窗口（观看 100% 满屏通关 AI / DQN / 人工试玩）
 ```bash
 cd /home/qzy/snake-rl
 
-# 1. 直接观看已训练好的 Dueling Double DQN 智能体实战（实时展示三向 Q 值预测）
-.venv/bin/python scripts/play.py --mode dqn
+# 1. 【强烈推荐】观看 Maskable PPO + 神经拓扑前瞻宗师模型冲击 100% 满屏彻底通关！
+#    （10x10 棋盘满分 97 分，平均占满率 98.9%，中位数 97.0 满分通关，按 ] 键可加速至 90/240 FPS）
+.venv/bin/python scripts/play.py --mode ppo
 
-# 2. 启动人工键盘试玩模式（随时按 Tab 键在 [人工 -> DQN AI -> 启发式 AI] 之间循环切换！）
+# 2. 观看 24 维特征 Dueling Double DQN 智能体实战（实时展示三向 Q 值预测）
+.venv/bin/python scripts/play.py --mode dqn --grid-size 12
+
+# 3. 启动人工键盘试玩模式（随时按 Tab 键在 [人工 -> PPO -> DQN -> 启发式 AI] 间无缝切换！）
 .venv/bin/python scripts/play.py
 ```
 
-### 重新训练 Dueling Double DQN 或启动 TensorBoard
+### 重新运行 GPU 训练或启动 TensorBoard
 ```bash
-# 16 环境并行 + RTX 4060 GPU 训练 400,000 步（约 4.5 分钟）
+# RTX 4060 纯 GPU 1,024 环境并行训练 Maskable PPO + Ego-SE-ResNet（1,600 万步）
+.venv/bin/python scripts/train_ppo.py --total-steps 16000000 --grid-size 10 --num-envs 1024
+
+# 16 环境并行训练 3-Step Dueling Double DQN（40 万步）
 .venv/bin/python scripts/train_dqn.py --total-steps 400000 --num-envs 16
 
-# 启动 TensorBoard 查看训练实时日志
+# 启动 TensorBoard 查看训练日志
 .venv/bin/tensorboard --logdir runs
 ```
 

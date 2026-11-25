@@ -91,6 +91,8 @@ class SnakeEnv(gym.Env[np.ndarray, int]):
         self.reward_history: deque[float] = deque(maxlen=80)
         self.last_reachable_ratios: np.ndarray = np.ones(3, dtype=np.float32)
         self.last_q_values: np.ndarray | None = None
+        self.last_action_probs: np.ndarray | None = None
+        self.last_state_value: float | None = None
 
     def reset(
         self,
@@ -107,6 +109,8 @@ class SnakeEnv(gym.Env[np.ndarray, int]):
         self.last_reward = 0.0
         self.reward_history.clear()
         self.last_q_values = None
+        self.last_action_probs = None
+        self.last_state_value = None
 
         obs = self._get_obs()
         info = self._get_info()
