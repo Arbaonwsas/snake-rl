@@ -7,10 +7,13 @@ dist/
 build/
 .pytest_cache/
 
-# RL 训练产出与日志
+# 本地训练过程产出与日志
 checkpoints/
 runs/
 videos/
 outputs/
 *.pt
 *.pth
+
+# 放行随仓库发布的轻量化开箱即用预训练权重
+!pretrained/*.pt

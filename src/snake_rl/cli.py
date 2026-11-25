@@ -15,7 +15,9 @@ from snake_rl.ppo.agent import MaskablePPOAgent
 
 FPS_LEVELS = [5, 10, 15, 25, 45, 90, 240]
 DEFAULT_DQN_CKPT = Path("checkpoints/best_dqn.pt")
+PRETRAINED_DQN_CKPT = Path("pretrained/best_dqn.pt")
 DEFAULT_PPO_CKPT = Path("checkpoints/best_ppo.pt")
+PRETRAINED_PPO_CKPT = Path("pretrained/best_ppo.pt")
 
 KEY_TO_DIRECTION: dict[int, Direction] = {
     pygame.K_UP: Direction.UP,
@@ -40,24 +42,26 @@ def _direction_to_relative_action(curr_dir: Direction, target_dir: Direction) ->
 
 
 def _try_load_dqn(checkpoint: Path) -> DQNAgent | None:
-    if checkpoint.is_file():
-        agent, meta = DQNAgent.load(checkpoint, device="auto")
+    target = checkpoint if checkpoint.is_file() else (PRETRAINED_DQN_CKPT if checkpoint == DEFAULT_DQN_CKPT and PRETRAINED_DQN_CKPT.is_file() else checkpoint)
+    if target.is_file():
+        agent, meta = DQNAgent.load(target, device="auto")
         sc = meta.get("eval_mean_score")
         sc_str = f" (均分: {sc:.1f})" if isinstance(sc, (int, float)) else ""
-        print(f"[Snake RL] 已加载 DQN 权重: {checkpoint}{sc_str}")
+        print(f"[Snake RL] 已加载 DQN 权重: {target}{sc_str}")
         return agent
     return None
 
 
 def _try_load_ppo(checkpoint: Path) -> MaskablePPOAgent | None:
-    if checkpoint.is_file():
-        agent, meta = MaskablePPOAgent.load(checkpoint, device="auto")
+    target = checkpoint if checkpoint.is_file() else (PRETRAINED_PPO_CKPT if checkpoint == DEFAULT_PPO_CKPT and PRETRAINED_PPO_CKPT.is_file() else checkpoint)
+    if target.is_file():
+        agent, meta = MaskablePPOAgent.load(target, device="auto")
         wr = meta.get("eval_win_rate")
         sc = meta.get("eval_mean_score")
         extra = ""
         if isinstance(sc, (int, float)) and isinstance(wr, (int, float)):
             extra = f" (棋盘 {agent.config.grid_size}x{agent.config.grid_size}, 均分: {sc:.1f}, 满分通关率: {wr * 100:.1f}%)"
-        print(f"[Snake RL] 已加载 Maskable PPO 权重: {checkpoint}{extra}")
+        print(f"[Snake RL] 已加载 Maskable PPO 权重: {target}{extra}")
         return agent
     return None
 
