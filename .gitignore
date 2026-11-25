@@ -1,0 +1,16 @@
+# Python & uv
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.pytest_cache/
+
+# RL 训练产出与日志
+checkpoints/
+runs/
+videos/
+outputs/
+*.pt
+*.pth
